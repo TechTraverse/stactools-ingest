@@ -1,0 +1,42 @@
+name: Test
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+    - main
+    tags:
+    - 'v*'
+  pull_request:
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "0.6.*" 
+          enable-cache: true
+
+      - name: Install PostgreSQL and PostGIS
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql postgresql-contrib postgresql-16-postgis-3
+          sudo service postgresql start
+          pg_isready
+
+      - name: Install dependencies
+        run: |
+          uv sync 
+
+      # - name: run pre-commit
+      #   if: ${{ matrix.python-version == env.LATEST_PY_VERSION }}
+      #   run: |
+      #     uv run pre-commit run --all-files
+
+      - name: Run tests
+        run: uv run pytest
+

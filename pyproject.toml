@@ -1,45 +1,34 @@
 [project]
-name = "stactools-uvx"
+name = "stactools-ingest"
 version = "0.1.0"
-description = "An application for generating STAC metadata with any stactools package"
-readme = "README.md"
-authors = [
-    { name = "hrodmn", email = "henry@developmentseed.org" }
-]
 requires-python = ">=3.11"
-dependencies = [
-    "fastapi>=0.115.12",
-    "pydantic>=2.11.0",
-    "stac-pydantic>=3.2.0",
-]
+dependencies = ["item-gen", "item-load", "boto3==1.34.145"]
 
-[project.scripts]
-stactools-uvx = "stactools_uvx:app"
+[tool.uv.sources]
+item-gen = { workspace = true }
+item-load = { workspace = true }
 
-[project.optional-dependencies]
-lambda = [
-    "mangum>=0.19.0",
-]
-
-[build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+[tool.uv.workspace]
+members = ["packages/*"]
 
 [dependency-groups]
 deploy = [
-    "aws-cdk-lib>=2.186.0",
+    "aws-cdk-lib>=2.130.0",
+    "eoapi-cdk==8.0.2",
     "pydantic-settings[yaml]>=2.8.1",
 ]
 dev = [
+    "aws-lambda-typing>=2.20.0",
     "httpx>=0.28.1",
     "pytest>=8.3.5",
-    "uvicorn>=0.34.0",
+    "pytest-mock>=3.14.0",
+    "pytest-postgresql>=7.0.1",
 ]
 
 [tool.pytest.ini_options]
-addopts = "-vv --ignore=cdk.out"
+addopts = "-vv --ignore=cdk.out --no-header --tb=native"
+pythonpath = "."
 
 [tool.ruff]
 
 [tool.ruff.lint]
-
