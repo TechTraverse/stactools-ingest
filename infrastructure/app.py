@@ -127,6 +127,13 @@ class PgstacStack(Stack):
             db_secret=self.db.pgstac_secret,
         )
 
+        CfnOutput(
+            self,
+            "PgstacSecret",
+            value=self.db.pgstac_secret.secret_arn,
+            description="ARN of the pgstac secret",
+        )
+
 
 class StactoolsIngestStack(Stack):
     def __init__(
@@ -158,7 +165,7 @@ class StactoolsIngestStack(Stack):
         item_gen_queue = aws_sqs.Queue(
             self,
             "ItemGenQueue",
-            visibility_timeout=Duration.seconds(item_gen_lambda_timeout_seconds),
+            visibility_timeout=Duration.seconds(item_gen_lambda_timeout_seconds + 10),
             encryption=aws_sqs.QueueEncryption.SQS_MANAGED,
             dead_letter_queue=aws_sqs.DeadLetterQueue(
                 max_receive_count=5,
@@ -207,17 +214,17 @@ class StactoolsIngestStack(Stack):
         # Lambdas
         item_gen_function = aws_lambda.DockerImageFunction(
             self,
-            "ItemGenLambda",
+            "ItemGenFunction",
             code=aws_lambda.DockerImageCode.from_image_asset(
                 directory=os.path.abspath(context_dir),
-                file="infrastructure/item_gen/Dockerfile",  # Your existing Dockerfile
+                file="infrastructure/item_gen/Dockerfile",
                 platform=Platform.LINUX_AMD64,
                 build_args={
                     "PYTHON_VERSION": lambda_runtime.to_string().replace("python", ""),
                 },
             ),
             memory_size=1024,
-            timeout=Duration.seconds(15),  # Main_queue_1 visibility timeout >= this
+            timeout=Duration.seconds(item_gen_lambda_timeout_seconds),
             log_retention=aws_logs.RetentionDays.ONE_WEEK,
             environment={
                 "ITEM_LOAD_TOPIC_ARN": item_load_topic.topic_arn,
@@ -256,6 +263,7 @@ class StactoolsIngestStack(Stack):
                 "PGSTAC_SECRET_ARN": pgstac_db.pgstac_secret.secret_arn,
             },
         )
+        pgstac_db.pgstac_secret.grant_read(item_load_function)
 
         item_load_function.add_event_source(
             aws_lambda_event_sources.SqsEventSource(

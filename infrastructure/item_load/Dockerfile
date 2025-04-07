@@ -9,7 +9,7 @@ WORKDIR /asset
 
 COPY uv.lock uv.lock
 COPY packages/item-load/pyproject.toml pyproject.toml
-COPY packages/item-load/src/item_load/ src/item_load/
+COPY packages/item-load/src/item_load/ item_load/
 
 RUN uv export --frozen --no-dev --no-editable --no-emit-workspace -o requirements.txt && \
   uv pip install --target /asset -r requirements.txt

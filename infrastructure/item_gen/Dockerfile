@@ -12,7 +12,7 @@ WORKDIR ${LAMBDA_TASK_ROOT}
 
 COPY uv.lock uv.lock
 COPY packages/item-gen/pyproject.toml pyproject.toml
-COPY packages/item-gen/src/item_gen/ src/item_gen/
+COPY packages/item-gen/src/item_gen/ ${LAMBDA_TASK_ROOT}/item_gen/
 
 RUN uv export --frozen --no-dev --no-editable --no-emit-workspace -o requirements.txt && \
   uv pip install --target ${LAMBDA_TASK_ROOT} -r requirements.txt && \
