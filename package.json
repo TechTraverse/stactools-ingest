@@ -2,6 +2,6 @@
   "name": "stactools-uvx",
   "version": "0.1.0",
   "dependencies": {
-    "aws-cdk": "2.1006.0"
+    "aws-cdk": "2.130"
   }
 }

@@ -6,7 +6,6 @@ from aws_cdk import (
     Duration,
     RemovalPolicy,
     Stack,
-    Tags,
     aws_ec2,
     aws_lambda,
     aws_lambda_event_sources,
@@ -111,6 +110,7 @@ class PgstacStack(Stack):
                 "context": True,
                 "mosaic_index": True,
             },
+            add_pgbouncer=True,
             pgstac_version=PGSTAC_VERSION,
         )
 
@@ -210,7 +210,7 @@ class StactoolsIngestStack(Stack):
             "ItemGenLambda",
             code=aws_lambda.DockerImageCode.from_image_asset(
                 directory=os.path.abspath(context_dir),
-                file="infrastructure/item-gen/Dockerfile",  # Your existing Dockerfile
+                file="infrastructure/item_gen/Dockerfile",  # Your existing Dockerfile
                 platform=Platform.LINUX_AMD64,
                 build_args={
                     "PYTHON_VERSION": lambda_runtime.to_string().replace("python", ""),
@@ -243,8 +243,8 @@ class StactoolsIngestStack(Stack):
             handler="item_load.handler.handler",
             code=aws_lambda.Code.from_docker_build(
                 path=os.path.abspath(context_dir),
-                file="infrastucture/item-load/Dockerfile",
-                platform=Platform.LINUX_AMD64,
+                file="infrastructure/item_load/Dockerfile",
+                platform="linux/amd64",
                 build_args={
                     "PYTHON_VERSION": lambda_runtime.to_string().replace("python", ""),
                 },
@@ -295,13 +295,13 @@ app_config = AppConfig()
 
 vpc_stack = VpcStack(
     app,
-    id=f"{app_config.project_id}-{app_config.stage}",
+    id=f"{app_config.project_id}-{app_config.stage}-vpc",
     app_config=app_config,
 )
 
 pgstac_stack = PgstacStack(
     app,
-    id=f"{app_config.project_id}-{app_config.stage}",
+    id=f"{app_config.project_id}-{app_config.stage}-pgstac",
     app_config=app_config,
     vpc=vpc_stack.vpc,
 )
@@ -313,14 +313,14 @@ stactools_ingest_stack = StactoolsIngestStack(
     pgstac_db=pgstac_stack.db,
 )
 
-for key, value in {
-    "Project": app_config.project_id,
-    "Stage": app_config.stage,
-    "Owner": "hrodmn",
-}.items():
-    if value:
-        for stack in [vpc_stack, pgstac_stack, stactools_ingest_stack]:
-            Tags.of(stack).add(key, value)
+# for key, value in {
+#     "Project": app_config.project_id,
+#     "Stage": app_config.stage,
+#     "Owner": "hrodmn",
+# }.items():
+#     if value:
+#         for stack in [vpc_stack, pgstac_stack, stactools_ingest_stack]:
+#             Tags.of(stack).add(key, value)
 
 
 app.synth()
