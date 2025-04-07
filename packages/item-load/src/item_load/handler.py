@@ -127,26 +127,26 @@ def handler(
             logger.error(f"[{message_id}] Marked as failed.")
             batch_item_failures.append({"itemIdentifier": message_id})
 
-        for collection_id, items in items_by_collection.items():
-            try:
-                with PgstacDB(dsn=pgstac_dsn) as db:
-                    loader = Loader(db=db)
-                    logger.info(f"[{collection_id}] loading items into database.")
-                    loader.load_items(
-                        file=items,  # type: ignore
-                        # use insert_ignore to avoid overwritting existing items or upsert to replace
-                        insert_mode=Methods.upsert,
-                    )
-                    logger.info(f"[{collection_id}] successfully loaded items.")
-            except Exception as e:
-                logger.error(f"[{collection_id}] failed to load items: {str(e)}")
-
-                batch_item_failures.extend(
-                    [
-                        {"itemIdentifier": message_id}
-                        for message_id in message_ids_by_collection[collection_id]
-                    ]
+    for collection_id, items in items_by_collection.items():
+        try:
+            with PgstacDB(dsn=pgstac_dsn) as db:
+                loader = Loader(db=db)
+                logger.info(f"[{collection_id}] loading items into database.")
+                loader.load_items(
+                    file=items,  # type: ignore
+                    # use insert_ignore to avoid overwritting existing items or upsert to replace
+                    insert_mode=Methods.upsert,
                 )
+                logger.info(f"[{collection_id}] successfully loaded items.")
+        except Exception as e:
+            logger.error(f"[{collection_id}] failed to load items: {str(e)}")
+
+            batch_item_failures.extend(
+                [
+                    {"itemIdentifier": message_id}
+                    for message_id in message_ids_by_collection[collection_id]
+                ]
+            )
 
     if batch_item_failures:
         logger.warning(
