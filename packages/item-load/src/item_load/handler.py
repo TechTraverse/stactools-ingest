@@ -70,15 +70,51 @@ def get_secret_dict(secret_name: str) -> Dict:
         return json.loads(base64.b64decode(get_secret_value_response["SecretBinary"]))
 
 
+def get_rds_token(host: str, user: str, port: str) -> str:
+    """Generate an RDS IAM authentication token
+
+    Returns:
+        token (str): IAM authentication token for RDS
+    """
+    session = boto3.session.Session()
+    rds_client = session.client("rds")
+
+    try:
+        token = rds_client.generate_db_auth_token(
+            DBHostname=host,
+            Port=port,
+            DBUsername=user
+        )
+        logger.info("Successfully generated IAM token for RDS.")
+        return token
+    except Exception as e:
+        logger.error(f"Failed to generate IAM token: {str(e)}")
+        raise
+
+
 def get_pgstac_dsn() -> str:
     secret_arn = os.getenv("PGSTAC_SECRET_ARN")
-    if not secret_arn:
-        logger.error("Environment variable PGSTAC_SECRET_ARN is not set.")
-        raise EnvironmentError("PGSTAC_SECRET_ARN must be set")
+    if secret_arn:
+        secret_dict = get_secret_dict(secret_name=secret_arn)
+        return f"postgres://{secret_dict['username']}:{secret_dict['password']}@{secret_dict['host']}:{secret_dict['port']}/{secret_dict['dbname']}"
 
-    secret_dict = get_secret_dict(secret_name=secret_arn)
+    # Fallback to IAM authentication if PGSTAC_SECRET_ARN is not set
+    postgres_host = os.getenv("POSTGRES_HOST")
+    postgres_dbname = os.getenv("POSTGRES_DBNAME")
+    postgres_user = os.getenv("POSTGRES_USER")
+    postgres_port = os.getenv("POSTGRES_PORT", "5432")
 
-    return f"postgres://{secret_dict['username']}:{secret_dict['password']}@{secret_dict['host']}:{secret_dict['port']}/{secret_dict['dbname']}"
+    if not (postgres_host and postgres_dbname and postgres_user):
+        logger.error("Environment variables POSTGRES_HOST, POSTGRES_DBNAME, and POSTGRES_USER must be set for IAM authentication.")
+        raise EnvironmentError("Missing required environment variables for IAM authentication.")
+
+    token = get_rds_token(
+        host=postgres_host,
+        user=postgres_user,
+        port=postgres_port
+    )
+
+    return f"postgres://{postgres_user}:{token}@{postgres_host}:{postgres_port}/{postgres_dbname}"
 
 
 def handler(
