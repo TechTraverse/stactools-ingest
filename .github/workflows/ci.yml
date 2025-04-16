@@ -1,4 +1,4 @@
-name: Test
+name: CI
 
 on:
   workflow_dispatch:
@@ -39,4 +39,33 @@ jobs:
 
       - name: Run tests
         run: uv run pytest
+
+  publish:
+    runs-on: ubuntu-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Downcase REPO for docker image name
+        id: downcase
+        run: |
+          repo_name=${{ github.repository }}
+          echo "repo=${repo_name,,}" >> $GITHUB_OUTPUT
+
+      - name: Build and push stactools-ingest-load image
+        run: |
+          docker build -t ghcr.io/${{ steps.downcase.outputs.repo }}/stactools-ingest-load -f ./infrastructure/item_load/Dockerfile .
+          docker push ghcr.io/${{ steps.downcase.outputs.repo }}/stactools-ingest-load
+
+      - name: Build and push stactools-ingest-gen image
+        run: |
+          docker build -t ghcr.io/${{ steps.downcase.outputs.repo }}/stactools-ingest-gen -f ./infrastructure/item_gen/Dockerfile .
+          docker push ghcr.io/${{ steps.downcase.outputs.repo }}/stactools-ingest-gen
 
